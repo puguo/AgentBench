@@ -1,7 +1,9 @@
 import contextlib
 import time
 import warnings
-
+import csv
+import datetime
+import os
 import requests
 from urllib3.exceptions import InsecureRequestWarning
 
@@ -190,6 +192,7 @@ class HTTPAgent(AgentClient):
             try:
                 body = self.body.copy()
                 body.update(self._handle_history(history))
+                request_timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
                 with no_ssl_verification():
                     resp = requests.post(
                         self.url, json=body, headers=self.headers, proxies=self.proxies, timeout=120
@@ -210,6 +213,30 @@ class HTTPAgent(AgentClient):
                 pass
             else:
                 resp = resp.json()
+                usage = resp.get('usage', {})
+                prompt_tokens = usage.get('prompt_tokens', 0)
+                completion_tokens = usage.get('completion_tokens', 0)
+                log_to_csv(request_timestamp,prompt_tokens, completion_tokens)
+                
                 return self.return_format.format(response=resp)
             time.sleep(_ + 2)
         raise Exception("Failed.")
+
+def log_to_csv(request_timestamp,prompt_tokens, completion_tokens):
+    filename = 'overall_logging.csv'
+    header = ['request_timestamp','finish_timestamp', 'prompt_tokens', 'completion_tokens']
+    data = {
+        'request_timestamp': request_timestamp,
+        'finish_timestamp': datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
+        'prompt_tokens': prompt_tokens,
+        'completion_tokens': completion_tokens
+    }
+    try:
+        file_exists = os.path.isfile(filename)
+        with open(filename, mode='a', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=header)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(data)
+    except IOError as e:
+        print(f"Error writing to file {filename}: {e}")

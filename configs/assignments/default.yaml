@@ -4,14 +4,19 @@ concurrency:
   task:
     dbbench-std: 5
     os-std: 5
+    alfworld-std: 1
+    cg-std: 1
+    kg-std: 1
+    ltp-std: 1
+    m2w-std: 1
+
   agent:
-    gpt-3.5-turbo-0613: 5
+    gpt-3.5-turbo: 5
 
 assignments: # List[Assignment] | Assignment
   - agent: # "task": List[str] | str ,  "agent": List[str] | str
-      - gpt-3.5-turbo-0613
+      - gpt-3.5-turbo
     task:
-      - dbbench-std
       - os-std
 
 output: "outputs/{TIMESTAMP}"

@@ -10,4 +10,4 @@ parameters:
     name: role_content_dict
     args:
       agent_role: assistant
-  return_format: "{response[choices][0][message][content]}"
+  return_format: "{response[choices][0][message][content]} prompt_tokens: {response[usage][prompt_tokens]} completion_tokens: {response[usage][completion_tokens]}"
