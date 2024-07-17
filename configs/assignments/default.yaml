@@ -18,5 +18,11 @@ assignments: # List[Assignment] | Assignment
       - gpt-3.5-turbo
     task:
       - os-std
+      - dbbench-std
+      - alfworld-std
+      - cg-std
+      - kg-std
+      - ltp-std
+      - m2w-std
 
 output: "outputs/{TIMESTAMP}"

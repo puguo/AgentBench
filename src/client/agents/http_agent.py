@@ -192,12 +192,12 @@ class HTTPAgent(AgentClient):
             try:
                 body = self.body.copy()
                 body.update(self._handle_history(history))
-                request_timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+                request_timestamp = datetime.datetime.now()
                 with no_ssl_verification():
                     resp = requests.post(
                         self.url, json=body, headers=self.headers, proxies=self.proxies, timeout=120
                     )
-                # print(resp.status_code, resp.text)
+                return_timestamp = datetime.datetime.now()
                 if resp.status_code != 200:
                     # print(resp.text)
                     if check_context_limit(resp.text):
@@ -214,29 +214,24 @@ class HTTPAgent(AgentClient):
             else:
                 resp = resp.json()
                 usage = resp.get('usage', {})
-                prompt_tokens = usage.get('prompt_tokens', 0)
-                completion_tokens = usage.get('completion_tokens', 0)
-                log_to_csv(request_timestamp,prompt_tokens, completion_tokens)
+                choices = resp.get('choices', {})
+                input_ntokens = usage.get('prompt_tokens', 0)
+                #input_val = ''
+                #for message in body['messages']:
+                #    input_val = input_val + message['content']
+                input_val = body
+                output_val = choices[0]['message']
+                output_ntokens = usage.get('completion_tokens', 0)
+                input_content = {"input":input_val,"input_ntokens":input_ntokens}
+                output_content = {"input":input_val, "output": output_val, "output_ntokens": output_ntokens, "total_ntokens": output_ntokens+input_ntokens}
+                log_action(request_timestamp,"LLM Call",input_content)
+                log_action(return_timestamp,"LLM Return",output_content)
                 
                 return self.return_format.format(response=resp)
             time.sleep(_ + 2)
         raise Exception("Failed.")
 
-def log_to_csv(request_timestamp,prompt_tokens, completion_tokens):
-    filename = 'overall_logging.csv'
-    header = ['request_timestamp','finish_timestamp', 'prompt_tokens', 'completion_tokens']
-    data = {
-        'request_timestamp': request_timestamp,
-        'finish_timestamp': datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
-        'prompt_tokens': prompt_tokens,
-        'completion_tokens': completion_tokens
-    }
-    try:
-        file_exists = os.path.isfile(filename)
-        with open(filename, mode='a', newline='') as file:
-            writer = csv.DictWriter(file, fieldnames=header)
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(data)
-    except IOError as e:
-        print(f"Error writing to file {filename}: {e}")
+def log_action(timestamp, action: str, content: dict):
+    with open("overall_logging.csv", "a", newline='') as log_file:
+        log_writer = csv.writer(log_file)
+        log_writer.writerow([timestamp, action, json.dumps(content)])

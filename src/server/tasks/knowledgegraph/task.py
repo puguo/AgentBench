@@ -1,5 +1,9 @@
 import sys
+import json
+import re
+import csv
 from typing import List, Tuple, Dict, Any
+import datetime
 
 from src.server.task import Task, Session
 from src.typings import TaskSampleExecutionResult, TaskOutput, SampleIndex, AgentOutputStatus, SampleStatus
@@ -88,6 +92,10 @@ class KnowledgeGraph(Task):
             self.data.append((item, gold_answer))  # input and target
             self.inputs.append(item)
             self.targets.append(gold_answer)
+    with open("KG logging.log", "w", newline='') as kg_log_file:
+        kg_log_writer = csv.writer(kg_log_file)
+        overall_log_writer = csv.writer(overall_log_file)
+        kg_log_writer.writerow(["timestamp", "Action", "content"])
 
     def calculate_overall(self, results: List[TaskOutput]) -> Dict[str, Any]:
         outputs = [None for _ in range(len(self.data))]
@@ -162,7 +170,22 @@ class KnowledgeGraph(Task):
         answer = []
         actions = []
         variables_list = []
+        tool_logs = []
+        
+        def log_tool_call(name, params):
+            timestamp = datetime.datetime.now()
+            log_entry = {"tool_name": name, "tool_param": params}
+            with open("KG logging.log", "a", newline='') as kg_log_file:
+                kg_log_writer = csv.writer(kg_log_file)
+                kg_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
 
+        def log_tool_return(name, ret):
+            timestamp = datetime.datetime.now()
+            log_entry = {"tool_name": name, "tool_ret": ret}
+            with open("KG logging.log", "a", newline='') as overall_log_file:
+                overall_log_writer = csv.writer(overall_log_file)
+                overall_log_writer.writerow([timestamp, "Tool Return", json.dumps(log_entry)])
+        
         question = data_item["question"]
         entities = data_item["entities"]
 
@@ -226,7 +249,9 @@ class KnowledgeGraph(Task):
                                     elif argument in entities:
                                         arguments[i] = entities[argument]
                                 arguments.append(self.sparql_executor)  # add the sparql executor as the last argument
+                                log_tool_call(function_name, arguments[:-1])
                                 execution, execution_message = func(*arguments)
+                                log_tool_return(function_name, execution)
                                 actions.append(f"{function_name}({', '.join(ori_arguments)})")
                                 if "##" in execution_message:
                                     # the execution message contains a variable

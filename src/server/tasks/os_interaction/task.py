@@ -5,6 +5,8 @@ import os
 import re
 import socket
 import struct
+import datetime
+import csv
 from typing import List, Dict, Any, Tuple
 
 import docker
@@ -18,6 +20,19 @@ from src.typings import (
     SampleStatus,
 )
 
+def log_tool_call(params):
+    timestamp = datetime.datetime.now()
+    log_entry = {"tool_name": 'OS', "tool_param": params}
+    with open("overall_logging.csv", "a", newline='') as os_log_file:
+        os_log_writer = csv.writer(os_log_file)
+        os_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
+
+def log_tool_return(ret):
+    timestamp = datetime.datetime.now()
+    log_entry = {"tool_name": 'OS',"tool_param": params, "tool_ret": ret}
+    with open("overall_logging.csv", "a", newline='') as os_log_file:
+        os_log_writer = csv.writer(os_log_file)
+        os_log_writer.writerow([timestamp, "Tool Return", json.dumps(log_entry)])
 
 class Container:
     def __init__(self, image):
@@ -291,7 +306,7 @@ class OSInteraction(Task):
                     "index": idx,
                 }
             self.problem_configs.update(dict_configs)
-
+            
     def calculate_overall(self, results: List[TaskOutput]) -> Dict[str, Any]:
         overall = {
             "total": len([config for config in results if config]),
@@ -467,12 +482,14 @@ If the output is too long, I will truncate it. The truncated output is not compl
                 answer = content
                 break
             elif action == "bash":
+                log_tool_call(content)
                 result = await asyncio.to_thread(container.execute, content)
                 result = result.output.decode("utf-8")
                 if len(result) > 800:
                     result = (
                         result[:780] + "\n[truncated because the output is too long]"
                     )
+                log_tool_return(result)
                 session.inject(
                     {
                         "role": "user",
