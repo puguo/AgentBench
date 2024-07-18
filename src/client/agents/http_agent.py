@@ -195,9 +195,9 @@ class HTTPAgent(AgentClient):
                 request_timestamp = datetime.datetime.now()
                 with no_ssl_verification():
                     resp = requests.post(
-                        self.url, json=body, headers=self.headers, proxies=self.proxies, timeout=120
+                        self.url, json=body, headers=self.headers, proxies=self.proxies, timeout=120, stream=True
                     )
-                return_timestamp = datetime.datetime.now()
+                
                 if resp.status_code != 200:
                     # print(resp.text)
                     if check_context_limit(resp.text):
@@ -212,7 +212,18 @@ class HTTPAgent(AgentClient):
                 print("Warning: ", e)
                 pass
             else:
-                resp = resp.json()
+                collected_chunks = []
+                first_token_timestamp = None
+                first_token = None
+                for chunk in resp.iter_lines():
+                    if chunk:
+                        chunk = chunk.decode('utf-8')
+                        collected_chunks.append(chunk)
+                        if not first_token_timestamp:
+                            first_token_timestamp = datetime.datetime.now()
+                            first_token = chunk
+                return_timestamp = datetime.datetime.now()
+                resp = json.loads(''.join([chunk for chunk in collected_chunks if chunk]))
                 usage = resp.get('usage', {})
                 choices = resp.get('choices', {})
                 input_ntokens = usage.get('prompt_tokens', 0)
@@ -222,10 +233,12 @@ class HTTPAgent(AgentClient):
                 input_val = body
                 output_val = choices[0]['message']
                 output_ntokens = usage.get('completion_tokens', 0)
-                input_content = {"input":input_val,"input_ntokens":input_ntokens}
-                output_content = {"input":input_val, "output": output_val, "output_ntokens": output_ntokens, "total_ntokens": output_ntokens+input_ntokens}
-                log_action(request_timestamp,"LLM Call",input_content)
-                log_action(return_timestamp,"LLM Return",output_content)
+                call_content = {"input":input_val,"input_ntokens":input_ntokens}
+                return_content = {"input":input_val, "output": output_val, "output_ntokens": output_ntokens, "total_ntokens": output_ntokens+input_ntokens}
+                decode_content = {"input":input_val,"output":first_token}
+                log_action(request_timestamp,"LLM Call",call_content)
+                log_action(first_token_timestamp,"LLM Decode",decode_content)
+                log_action(return_timestamp,"LLM Return",return_content)
                 
                 return self.return_format.format(response=resp)
             time.sleep(_ + 2)

@@ -3,9 +3,25 @@ import mysql.connector
 import random
 import socket
 import time
+import datetime
+import json
+import csv
 from docker.models import containers
 from typing import Optional, Union, Sequence, Dict, Any
 
+def log_tool_call(params):
+    timestamp = datetime.datetime.now()
+    log_entry = {"tool_name": 'DB', "tool_param": params}
+    with open("overall_logging.csv", "a", newline='') as os_log_file:
+        os_log_writer = csv.writer(os_log_file)
+        os_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
+
+def log_tool_return(params,ret):
+    timestamp = datetime.datetime.now()
+    log_entry = {"tool_name": 'DB',"tool_param": params, "tool_ret": ret}
+    with open("overall_logging.csv", "a", newline='') as os_log_file:
+        os_log_writer = csv.writer(os_log_file)
+        os_log_writer.writerow([timestamp, "Tool Return", json.dumps(log_entry)])
 
 class Container:
     port = 13000
@@ -71,6 +87,7 @@ class Container:
         database: str = None,
         data: Union[Sequence, Dict[str, Any]] = (),
     ) -> Optional[str]:
+        log_tool_call(sql)
         self.conn.reconnect()
         try:
             with self.conn.cursor() as cursor:
@@ -85,6 +102,7 @@ class Container:
             result = str(e)
         if len(result) > 800:
             result = result[:800] + "[TRUNCATED]"
+        log_tool_return(sql,result)
         return result
 
     def is_port_open(self, port) -> bool:

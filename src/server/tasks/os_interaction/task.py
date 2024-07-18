@@ -27,7 +27,7 @@ def log_tool_call(params):
         os_log_writer = csv.writer(os_log_file)
         os_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
 
-def log_tool_return(ret):
+def log_tool_return(params,ret):
     timestamp = datetime.datetime.now()
     log_entry = {"tool_name": 'OS',"tool_param": params, "tool_ret": ret}
     with open("overall_logging.csv", "a", newline='') as os_log_file:
@@ -489,7 +489,7 @@ If the output is too long, I will truncate it. The truncated output is not compl
                     result = (
                         result[:780] + "\n[truncated because the output is too long]"
                     )
-                log_tool_return(result)
+                log_tool_return(content,result)
                 session.inject(
                     {
                         "role": "user",

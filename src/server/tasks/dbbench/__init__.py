@@ -29,20 +29,6 @@ If your response cannot match any pattern I mentioned earlier, you will be judge
 Your input will be raw MySQL response, you have to deal with it by yourself.
 """
 
-def log_tool_call(params):
-    timestamp = datetime.datetime.now()
-    log_entry = {"tool_name": 'DB', "tool_param": params}
-    with open("overall_logging.csv", "a", newline='') as os_log_file:
-        os_log_writer = csv.writer(os_log_file)
-        os_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
-
-def log_tool_return(ret):
-    timestamp = datetime.datetime.now()
-    log_entry = {"tool_name": 'DB',"tool_param": params, "tool_ret": ret}
-    with open("overall_logging.csv", "a", newline='') as os_log_file:
-        os_log_writer = csv.writer(os_log_file)
-        os_log_writer.writerow([timestamp, "Tool Return", json.dumps(log_entry)])
-
 def build_init_sql(entry):
     name = entry["table"]["table_name"]
     columns = ",".join(
@@ -122,14 +108,11 @@ class DBBench(Task):
                     break
                 sql = res.group(1).strip()
                 sql = sql.replace("\n", " ")
-                log_tool_call(res)
                 response = container.execute(sql, db)
                 if response:
                     session.inject({"role": "user", "content": response})
-                    log_tool_return(response)
                 else:
                     session.inject({"role": "user", "content": ""})
-                    log_tool_return("")
                 res = await session.action()
                 if res.status == AgentOutputStatus.AGENT_CONTEXT_LIMIT:
                     finish_reason = SampleStatus.AGENT_CONTEXT_LIMIT

@@ -91,11 +91,6 @@ class KnowledgeGraph(Task):
                 gold_answer.add(a["answer_argument"])
             self.data.append((item, gold_answer))  # input and target
             self.inputs.append(item)
-            self.targets.append(gold_answer)
-    with open("KG logging.log", "w", newline='') as kg_log_file:
-        kg_log_writer = csv.writer(kg_log_file)
-        overall_log_writer = csv.writer(overall_log_file)
-        kg_log_writer.writerow(["timestamp", "Action", "content"])
 
     def calculate_overall(self, results: List[TaskOutput]) -> Dict[str, Any]:
         outputs = [None for _ in range(len(self.data))]
@@ -175,14 +170,14 @@ class KnowledgeGraph(Task):
         def log_tool_call(name, params):
             timestamp = datetime.datetime.now()
             log_entry = {"tool_name": name, "tool_param": params}
-            with open("KG logging.log", "a", newline='') as kg_log_file:
-                kg_log_writer = csv.writer(kg_log_file)
-                kg_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
+            with open("overall_logging.csv", "a", newline='') as os_log_file:
+                overall_log_writer = csv.writer(overall_log_writer)
+                overall_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
 
         def log_tool_return(name, ret):
             timestamp = datetime.datetime.now()
             log_entry = {"tool_name": name, "tool_ret": ret}
-            with open("KG logging.log", "a", newline='') as overall_log_file:
+            with open("overall_logging.csv", "a", newline='') as os_log_file:
                 overall_log_writer = csv.writer(overall_log_file)
                 overall_log_writer.writerow([timestamp, "Tool Return", json.dumps(log_entry)])
         

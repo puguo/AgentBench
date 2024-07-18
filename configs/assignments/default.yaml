@@ -19,10 +19,10 @@ assignments: # List[Assignment] | Assignment
     task:
       - os-std
       - dbbench-std
-      - alfworld-std
-      - cg-std
-      - kg-std
-      - ltp-std
-      - m2w-std
+      # - alfworld-std
+      # - cg-std
+      # - kg-std
+      # - ltp-std
+      # - m2w-std
 
 output: "outputs/{TIMESTAMP}"
