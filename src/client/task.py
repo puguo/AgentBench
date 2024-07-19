@@ -72,6 +72,7 @@ class TaskClient:
         latest_result = result
         while SampleStatus(result["output"]["status"]) == SampleStatus.RUNNING:
             try:
+                # inference to agent based on chat history
                 content = agent.inference(result["output"]["history"])
                 response = AgentOutput(content=content)
             except AgentContextLimitException:

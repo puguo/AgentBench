@@ -170,16 +170,16 @@ class KnowledgeGraph(Task):
         def log_tool_call(name, params):
             timestamp = datetime.datetime.now()
             log_entry = {"tool_name": name, "tool_param": params}
-            with open("overall_logging.csv", "a", newline='') as os_log_file:
-                overall_log_writer = csv.writer(overall_log_writer)
-                overall_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
+            with open("KG_logging.csv", "a", newline='') as log_file:
+                log_writer = csv.writer(log_file)
+                log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
 
         def log_tool_return(name, ret):
             timestamp = datetime.datetime.now()
             log_entry = {"tool_name": name, "tool_ret": ret}
-            with open("overall_logging.csv", "a", newline='') as os_log_file:
-                overall_log_writer = csv.writer(overall_log_file)
-                overall_log_writer.writerow([timestamp, "Tool Return", json.dumps(log_entry)])
+            with open("KG_logging.csv", "a", newline='') as log_file:
+                log_writer = csv.writer(log_file)
+                log_writer.writerow([timestamp, "Tool Return", json.dumps(log_entry)])
         
         question = data_item["question"]
         entities = data_item["entities"]
@@ -246,7 +246,7 @@ class KnowledgeGraph(Task):
                                 arguments.append(self.sparql_executor)  # add the sparql executor as the last argument
                                 log_tool_call(function_name, arguments[:-1])
                                 execution, execution_message = func(*arguments)
-                                log_tool_return(function_name, execution)
+                                log_tool_return(function_name, execution_message)
                                 actions.append(f"{function_name}({', '.join(ori_arguments)})")
                                 if "##" in execution_message:
                                     # the execution message contains a variable
@@ -267,11 +267,13 @@ class KnowledgeGraph(Task):
                                 continue
 
                         if not function_executed:
+                            log_tool_return(function_name, execution_message)
                             session.inject({"role": "user", "content": execution_message})
 
                         break  # should at most be one line starts with Action
 
                 if not find_action:  # only for ChatGLM-130B to make sure the conversation alternates properly
+                    log_tool_return(function_name, {"role": "user", "content": "No executable function found! Need to recheck the action."})
                     session.inject(
                         {"role": "user", "content": "No executable function found! Need to recheck the action."})
         else:

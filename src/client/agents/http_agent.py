@@ -245,6 +245,6 @@ class HTTPAgent(AgentClient):
         raise Exception("Failed.")
 
 def log_action(timestamp, action: str, content: dict):
-    with open("overall_logging.csv", "a", newline='') as log_file:
+    with open("M2W_HH_logging.csv", "a", newline='') as log_file:
         log_writer = csv.writer(log_file)
         log_writer.writerow([timestamp, action, json.dumps(content)])

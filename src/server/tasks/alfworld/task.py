@@ -9,6 +9,20 @@ from copy import deepcopy
 import traceback
 
 
+def log_env_call(params):
+    timestamp = datetime.datetime.now()
+    log_entry = {"env_name": 'SingleAlfredTWEnv', "env_param": params}
+    with open("HH_DCG_LTP_logging.csv", "a", newline='') as log_file:
+        log_writer = csv.writer(log_file)
+        log_writer.writerow([timestamp, "Env Call", json.dumps(log_entry)])
+
+def log_env_return(ret):
+    timestamp = datetime.datetime.now()
+    log_entry = {"env_name": 'SingleAlfredTWEnv', "env_ret": ret}
+    with open("HH_DCG_LTP_logging.csv", "a", newline='') as log_file:
+        log_writer = csv.writer(log_file)
+        log_writer.writerow([timestamp, "Env Return", json.dumps(log_entry)])
+
 class ALFWorld(Task):
 
     def __init__(self, **kwargs):
@@ -194,11 +208,13 @@ class ALFWorld(Task):
                 break
             session.history[-2].content = session.history[-2].content.split("AVAILABLE ACTIONS")[
                 0]  # reduce the prompt length
-
+            log_env_call([action])
             observation, reward, done, info = env.step([action])
             observation, reward, done = process_ob(observation[0]), info['won'][0], done[0]
-            session.inject({"role": "user", "content": observation + self.get_available_actions(
-                info.get('admissible_commands', [[]])[0])})
+            log_env_call([action])
+            env_content = observation + self.get_available_actions(info.get('admissible_commands', [[]])[0])
+            log_env_ret({"role": "user", "content":env_content })
+            session.inject({"role": "user", "content":env_content })
 
             # save
             payload = {
