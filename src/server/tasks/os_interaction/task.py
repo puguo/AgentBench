@@ -21,14 +21,14 @@ from src.typings import (
 )
 
 def log_tool_call(params):
-    timestamp = datetime.datetime.now()
+    timestamp = datetime.datetime.now().timestamp()
     log_entry = {"tool_name": 'OS', "tool_param": params}
     with open("OS_DB.csv", "a", newline='') as log_file:
         os_log_writer = csv.writer(log_file)
         os_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
 
 def log_tool_return(params,ret):
-    timestamp = datetime.datetime.now()
+    timestamp = datetime.datetime.now().timestamp()
     log_entry = {"tool_name": 'OS',"tool_param": params, "tool_ret": ret}
     with open("OS_DB.csv", "a", newline='') as log_file:
         os_log_writer = csv.writer(log_file)

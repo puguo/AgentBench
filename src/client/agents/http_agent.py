@@ -192,7 +192,7 @@ class HTTPAgent(AgentClient):
             try:
                 body = self.body.copy()
                 body.update(self._handle_history(history))
-                request_timestamp = datetime.datetime.now()
+                request_timestamp = datetime.datetime.now().timestamp()
                 with no_ssl_verification():
                     resp = requests.post(
                         self.url, json=body, headers=self.headers, proxies=self.proxies, timeout=120, stream=True
@@ -220,9 +220,9 @@ class HTTPAgent(AgentClient):
                         chunk = chunk.decode('utf-8')
                         collected_chunks.append(chunk)
                         if not first_token_timestamp:
-                            first_token_timestamp = datetime.datetime.now()
+                            first_token_timestamp = datetime.datetime.now().timestamp()
                             first_token = chunk
-                return_timestamp = datetime.datetime.now()
+                return_timestamp = datetime.datetime.now().timestamp()
                 resp = json.loads(''.join([chunk for chunk in collected_chunks if chunk]))
                 usage = resp.get('usage', {})
                 choices = resp.get('choices', {})
@@ -245,6 +245,6 @@ class HTTPAgent(AgentClient):
         raise Exception("Failed.")
 
 def log_action(timestamp, action: str, content: dict):
-    with open("M2W_HH_logging.csv", "a", newline='') as log_file:
+    with open("DCG_LTP_logging.csv", "a", newline='') as log_file:
         log_writer = csv.writer(log_file)
         log_writer.writerow([timestamp, action, json.dumps(content)])

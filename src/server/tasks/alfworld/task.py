@@ -10,14 +10,14 @@ import traceback
 
 
 def log_env_call(params):
-    timestamp = datetime.datetime.now()
+    timestamp = datetime.datetime.now().timestamp()
     log_entry = {"env_name": 'SingleAlfredTWEnv', "env_param": params}
     with open("HH_DCG_LTP_logging.csv", "a", newline='') as log_file:
         log_writer = csv.writer(log_file)
         log_writer.writerow([timestamp, "Env Call", json.dumps(log_entry)])
 
 def log_env_return(ret):
-    timestamp = datetime.datetime.now()
+    timestamp = datetime.datetime.now().timestamp()
     log_entry = {"env_name": 'SingleAlfredTWEnv', "env_ret": ret}
     with open("HH_DCG_LTP_logging.csv", "a", newline='') as log_file:
         log_writer = csv.writer(log_file)
