@@ -4,11 +4,14 @@ import re
 import csv
 from typing import List, Tuple, Dict, Any
 import datetime
+import uuid
 
 from src.server.task import Task, Session
 from src.typings import TaskSampleExecutionResult, TaskOutput, SampleIndex, AgentOutputStatus, SampleStatus
 from .api import *
 from .utils.sparql_executer import SparqlExecuter
+
+call_id = 0
 
 INSTRUCTIONS = """
 You are an agent that answers questions based on the knowledge stored in a knowledge base. To achieve this, you can use the following tools to query the KB.
@@ -165,18 +168,17 @@ class KnowledgeGraph(Task):
         answer = []
         actions = []
         variables_list = []
-        tool_logs = []
         
-        def log_tool_call(name, params):
+        def log_tool_call(call_id,name, params):
             timestamp = datetime.datetime.now().timestamp()
-            log_entry = {"tool_name": name, "tool_param": params}
+            log_entry = {"Call_id":call_id,"tool_name": name, "tool_param": params}
             with open("KG_logging.csv", "a", newline='') as log_file:
                 log_writer = csv.writer(log_file)
                 log_writer.writerow([timestamp, "Tool Call", log_entry])
 
-        def log_tool_return(name, params, ret):
+        def log_tool_return(call_id, ret):
             timestamp = datetime.datetime.now().timestamp()
-            log_entry = {"tool_name": name, "tool_param": params, "tool_ret": ret}
+            log_entry = {"Call_id":call_id,"tool_ret": ret}
             with open("KG_logging.csv", "a", newline='') as log_file:
                 log_writer = csv.writer(log_file)
                 log_writer.writerow([timestamp, "Tool Return", log_entry])
@@ -244,9 +246,10 @@ class KnowledgeGraph(Task):
                                     elif argument in entities:
                                         arguments[i] = entities[argument]
                                 arguments.append(self.sparql_executor)  # add the sparql executor as the last argument
-                                log_tool_call(function_name, arguments[:-1])
+                                call_id = str(uuid.uuid4())
+                                log_tool_call(call_id, function_name, arguments[:-1])
                                 execution, execution_message = func(*arguments)
-                                log_tool_return(function_name, arguments[:-1], execution_message)
+                                log_tool_return(call_id, execution_message)
                                 actions.append(f"{function_name}({', '.join(ori_arguments)})")
                                 if "##" in execution_message:
                                     # the execution message contains a variable
@@ -263,7 +266,7 @@ class KnowledgeGraph(Task):
                                         execution_message = f"{function_name}({', '.join(ori_arguments)}) cannot be executed. The two variables are not of the same type. You may further explore them by call get_relations"
                                 except UnboundLocalError:
                                     execution_message = f"I may make a syntax error when calling {function_name} (e.g., unmatched parenthesis). I need to fix it and reuse the tool"
-                                log_tool_return(function_name,arguments[:-1],execution_message)
+                                log_tool_return(call_id,execution_message)
                                 continue
 
                         if not function_executed:

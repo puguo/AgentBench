@@ -224,6 +224,7 @@ class HTTPAgent(AgentClient):
                             first_token = chunk
                 return_timestamp = datetime.datetime.now().timestamp()
                 resp = json.loads(''.join([chunk for chunk in collected_chunks if chunk]))
+                call_id = resp.get('id','')
                 usage = resp.get('usage', {})
                 choices = resp.get('choices', {})
                 input_ntokens = usage.get('prompt_tokens', 0)
@@ -233,9 +234,9 @@ class HTTPAgent(AgentClient):
                 input_val = body
                 output_val = choices[0]['message']
                 output_ntokens = usage.get('completion_tokens', 0)
-                call_content = {"input":input_val,"input_ntokens":input_ntokens}
-                return_content = {"input":input_val, "output": output_val, "output_ntokens": output_ntokens, "total_ntokens": output_ntokens+input_ntokens}
-                decode_content = {"input":input_val,"output":first_token}
+                call_content = {"Call_id":call_id,"input":input_val,"input_ntokens":input_ntokens}
+                return_content = {"Call_id":call_id, "output": output_val, "output_ntokens": output_ntokens, "total_ntokens": output_ntokens+input_ntokens}
+                decode_content = {"Call_id":call_id,"output":first_token}
                 log_action(request_timestamp,"LLM Call",call_content)
                 log_action(first_token_timestamp,"LLM Decode",decode_content)
                 log_action(return_timestamp,"LLM Return",return_content)
@@ -245,6 +246,6 @@ class HTTPAgent(AgentClient):
         raise Exception("Failed.")
 
 def log_action(timestamp, action: str, content: dict):
-    with open("DCG_LTP_logging.csv", "a", newline='') as log_file:
+    with open("WS_logging.csv", "a", newline='') as log_file:
         log_writer = csv.writer(log_file)
         log_writer.writerow([timestamp, action, json.dumps(content)])

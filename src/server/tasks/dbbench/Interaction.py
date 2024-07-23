@@ -6,20 +6,21 @@ import time
 import datetime
 import json
 import csv
+import uuid
 from docker.models import containers
 from typing import Optional, Union, Sequence, Dict, Any
 
-def log_tool_call(params):
+def log_tool_call(call_id, params):
     timestamp = datetime.datetime.now().timestamp()
-    log_entry = {"tool_name": 'DB', "tool_param": params}
-    with open("OS_DB_logging.csv", "a", newline='') as log_file:
+    log_entry = {"Call_id":call_id,"tool_name": 'DB', "tool_param": params}
+    with open("DB_logging.csv", "a", newline='') as log_file:
         os_log_writer = csv.writer(log_file)
         os_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
 
-def log_tool_return(params,ret):
+def log_tool_return(call_id,ret):
     timestamp = datetime.datetime.now().timestamp()
-    log_entry = {"tool_name": 'DB',"tool_param": params, "tool_ret": ret}
-    with open("OS_DB_logging.csv", "a", newline='') as log_file:
+    log_entry = {"Call_id":call_id, "tool_ret": ret}
+    with open("DB_logging.csv", "a", newline='') as log_file:
         os_log_writer = csv.writer(log_file)
         os_log_writer.writerow([timestamp, "Tool Return", json.dumps(log_entry)])
 
@@ -87,7 +88,8 @@ class Container:
         database: str = None,
         data: Union[Sequence, Dict[str, Any]] = (),
     ) -> Optional[str]:
-        log_tool_call(sql)
+        call_id = str(uuid.uuid4())
+        log_tool_call(call_id,sql)
         self.conn.reconnect()
         try:
             with self.conn.cursor() as cursor:
@@ -102,7 +104,7 @@ class Container:
             result = str(e)
         if len(result) > 800:
             result = result[:800] + "[TRUNCATED]"
-        log_tool_return(sql,result)
+        log_tool_return(call_id,result)
         return result
 
     def is_port_open(self, port) -> bool:

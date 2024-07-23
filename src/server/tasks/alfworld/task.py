@@ -1,4 +1,8 @@
 import os
+import uuid
+import datetime
+import csv
+import json
 from typing import Dict, Any
 
 from src.server.task import Task, Session
@@ -9,17 +13,17 @@ from copy import deepcopy
 import traceback
 
 
-def log_env_call(params):
+def log_env_call(call_id,params):
     timestamp = datetime.datetime.now().timestamp()
-    log_entry = {"env_name": 'SingleAlfredTWEnv', "env_param": params}
-    with open("HH_DCG_LTP_logging.csv", "a", newline='') as log_file:
+    log_entry = {"Call_id":call_id,"env_name": 'SingleAlfredTWEnv', "env_param": params}
+    with open("HH_logging.csv", "a", newline='') as log_file:
         log_writer = csv.writer(log_file)
         log_writer.writerow([timestamp, "Env Call", json.dumps(log_entry)])
 
-def log_env_return(ret):
+def log_env_return(call_id, ret):
     timestamp = datetime.datetime.now().timestamp()
-    log_entry = {"env_name": 'SingleAlfredTWEnv', "env_ret": ret}
-    with open("HH_DCG_LTP_logging.csv", "a", newline='') as log_file:
+    log_entry = {"Call_id":call_id,"env_name": 'SingleAlfredTWEnv', "env_ret": ret}
+    with open("HH_logging.csv", "a", newline='') as log_file:
         log_writer = csv.writer(log_file)
         log_writer.writerow([timestamp, "Env Return", json.dumps(log_entry)])
 
@@ -208,12 +212,12 @@ class ALFWorld(Task):
                 break
             session.history[-2].content = session.history[-2].content.split("AVAILABLE ACTIONS")[
                 0]  # reduce the prompt length
-            log_env_call([action])
+            call_id = str(uuid.uuid4())
+            log_env_call(call_id, [action])
             observation, reward, done, info = env.step([action])
             observation, reward, done = process_ob(observation[0]), info['won'][0], done[0]
-            log_env_call([action])
             env_content = observation + self.get_available_actions(info.get('admissible_commands', [[]])[0])
-            log_env_ret({"role": "user", "content":env_content })
+            log_env_return(call_id, {"role": "user", "content":env_content })
             session.inject({"role": "user", "content":env_content })
 
             # save

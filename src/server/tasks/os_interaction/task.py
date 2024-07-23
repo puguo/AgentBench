@@ -7,6 +7,7 @@ import socket
 import struct
 import datetime
 import csv
+import uuid
 from typing import List, Dict, Any, Tuple
 
 import docker
@@ -20,18 +21,20 @@ from src.typings import (
     SampleStatus,
 )
 
-def log_tool_call(params):
+def log_tool_call(call_id,params):
     timestamp = datetime.datetime.now().timestamp()
-    log_entry = {"tool_name": 'OS', "tool_param": params}
-    with open("OS_DB.csv", "a", newline='') as log_file:
+    log_entry = {"Call_id":call_id,"tool_name": 'OS', "tool_param": params}
+    with open("OS_logging.csv", "a", newline='') as log_file:
         os_log_writer = csv.writer(log_file)
+        print("writing1")
         os_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
 
-def log_tool_return(params,ret):
+def log_tool_return(call_id,ret):
     timestamp = datetime.datetime.now().timestamp()
-    log_entry = {"tool_name": 'OS',"tool_param": params, "tool_ret": ret}
-    with open("OS_DB.csv", "a", newline='') as log_file:
+    log_entry = {"Call_id":call_id, "tool_ret": ret}
+    with open("OS_logging.csv", "a", newline='') as log_file:
         os_log_writer = csv.writer(log_file)
+        print("writing2")
         os_log_writer.writerow([timestamp, "Tool Return", json.dumps(log_entry)])
 
 class Container:
@@ -379,8 +382,8 @@ class OSInteraction(Task):
             result.result["index_in_file"] = index_in_file
             print("finish judge")
             return result
-        except Exception as _:
-            print("err")
+        except Exception as e:
+            print(e)
             import traceback
 
             return TaskSampleExecutionResult(
@@ -482,14 +485,17 @@ If the output is too long, I will truncate it. The truncated output is not compl
                 answer = content
                 break
             elif action == "bash":
-                log_tool_call(content)
+                call_id = str(uuid.uuid4())
+                log_tool_call(call_id,content)
+                print("Tool call logged",call_id )
                 result = await asyncio.to_thread(container.execute, content)
                 result = result.output.decode("utf-8")
                 if len(result) > 800:
                     result = (
                         result[:780] + "\n[truncated because the output is too long]"
                     )
-                log_tool_return(content,result)
+                log_tool_return(call_id,result)
+                print("Tool return logged",call_id )
                 session.inject(
                     {
                         "role": "user",
