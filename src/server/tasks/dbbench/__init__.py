@@ -3,6 +3,8 @@ import re
 from typing import Callable, Dict, List, Any
 import csv
 import datetime
+import uuid
+import json
 
 from src.server.task import Task, Session
 from src.typings import TaskOutput, SampleStatus, AgentOutputStatus
@@ -28,7 +30,20 @@ If the question is about modifying the database, then after done operation, your
 If your response cannot match any pattern I mentioned earlier, you will be judged as FAIL immediately.
 Your input will be raw MySQL response, you have to deal with it by yourself.
 """
+def log_tool_call(call_id, index, params):
+    timestamp = datetime.datetime.now().timestamp()
+    log_entry = {"Call_id":call_id,"tool_name": 'DB', "tool_param": params}
+    with open("DB_logging.csv", "a", newline='') as log_file:
+        os_log_writer = csv.writer(log_file)
+        os_log_writer.writerow([timestamp, index, "Tool Call", json.dumps(log_entry)])
 
+def log_tool_return(call_id, index, ret):
+    timestamp = datetime.datetime.now().timestamp()
+    log_entry = {"Call_id":call_id, "tool_ret": ret}
+    with open("DB_logging.csv", "a", newline='') as log_file:
+        os_log_writer = csv.writer(log_file)
+        os_log_writer.writerow([timestamp, index, "Tool Return", json.dumps(log_entry)])
+        
 def build_init_sql(entry):
     name = entry["table"]["table_name"]
     columns = ",".join(
@@ -89,7 +104,7 @@ class DBBench(Task):
         entry = self.dataset[index][0]
         container = self.container
         init_sql, init_data = build_init_sql(entry)
-        container.execute(init_sql, data=init_data)
+        container.execute(index, init_sql, data=init_data)
         db = entry["table"]["table_name"]
         session.inject({"role": "user", "content": big_prompt})
         session.inject({"role": "agent", "content": "Ok."})
@@ -108,11 +123,15 @@ class DBBench(Task):
                     break
                 sql = res.group(1).strip()
                 sql = sql.replace("\n", " ")
+                call_id = str(uuid.uuid4())
+                log_tool_call(call_id, index, sql)
                 response = container.execute(sql, db)
                 if response:
                     session.inject({"role": "user", "content": response})
+                    log_tool_return(call_id, index, response)
                 else:
                     session.inject({"role": "user", "content": ""})
+                    log_tool_return(call_id, index, "")
                 res = await session.action()
                 if res.status == AgentOutputStatus.AGENT_CONTEXT_LIMIT:
                     finish_reason = SampleStatus.AGENT_CONTEXT_LIMIT

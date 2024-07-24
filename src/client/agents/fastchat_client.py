@@ -124,7 +124,7 @@ class FastChatAgent(AgentClient):
         print(self.max_new_tokens)
         super().__init__(**kwargs)
 
-    def inference(self, history: List[dict]) -> str:
+    def inference(self, history: List[dict],index) -> str:
         if self.worker_address:
             worker_addr = self.worker_address
         else:

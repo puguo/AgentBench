@@ -6,6 +6,7 @@ import datetime
 import os
 import requests
 from urllib3.exceptions import InsecureRequestWarning
+from openai import OpenAI
 
 from src.typings import *
 from src.utils import *
@@ -187,65 +188,57 @@ class HTTPAgent(AgentClient):
     def _handle_history(self, history: List[dict]) -> Dict[str, Any]:
         return self.prompter(history)
 
-    def inference(self, history: List[dict]) -> str:
+    def inference(self, history: List[dict],index) -> str:
         for _ in range(3):
             try:
                 body = self.body.copy()
                 body.update(self._handle_history(history))
+                client = OpenAI(api_key='')
                 request_timestamp = datetime.datetime.now().timestamp()
                 with no_ssl_verification():
-                    resp = requests.post(
-                        self.url, json=body, headers=self.headers, proxies=self.proxies, timeout=120, stream=True
+                    resp = client.chat.completions.create(
+                        model = body['model'],
+                        messages = body['messages'],
+                        temperature = body['temperature'],
+                        max_tokens = body['max_tokens'],
+                        stream=True,
+                        stream_options={"include_usage": True},
                     )
-                
-                if resp.status_code != 200:
-                    # print(resp.text)
-                    if check_context_limit(resp.text):
-                        raise AgentContextLimitException(resp.text)
-                    else:
-                        raise Exception(
-                            f"Invalid status code {resp.status_code}:\n\n{resp.text}"
-                        )
-            except AgentClientException as e:
-                raise e
             except Exception as e:
                 print("Warning: ", e)
                 pass
             else:
-                collected_chunks = []
+                last_chunk = None
                 first_token_timestamp = None
+                collected_messages = []
                 first_token = None
-                for chunk in resp.iter_lines():
-                    if chunk:
-                        chunk = chunk.decode('utf-8')
-                        collected_chunks.append(chunk)
+                for chunk in resp:
+                    if chunk.usage == None:
+                        chunk_message = chunk.choices[0].delta.content
+                        collected_messages.append(chunk_message)
                         if not first_token_timestamp:
                             first_token_timestamp = datetime.datetime.now().timestamp()
-                            first_token = chunk
+                            first_token = chunk_message
+                    else:
+                        last_chunk = chunk
                 return_timestamp = datetime.datetime.now().timestamp()
-                resp = json.loads(''.join([chunk for chunk in collected_chunks if chunk]))
-                call_id = resp.get('id','')
-                usage = resp.get('usage', {})
-                choices = resp.get('choices', {})
-                input_ntokens = usage.get('prompt_tokens', 0)
-                #input_val = ''
-                #for message in body['messages']:
-                #    input_val = input_val + message['content']
-                input_val = body
-                output_val = choices[0]['message']
-                output_ntokens = usage.get('completion_tokens', 0)
-                call_content = {"Call_id":call_id,"input":input_val,"input_ntokens":input_ntokens}
+                collected_messages = [m for m in collected_messages if m is not None]
+                output_val = ''.join(collected_messages)
+                call_id = last_chunk.id
+                usage = last_chunk.usage
+                input_ntokens = usage.prompt_tokens
+                output_ntokens = usage.completion_tokens
+                call_content = {"Call_id":call_id,"input":body,"input_ntokens":input_ntokens}
                 return_content = {"Call_id":call_id, "output": output_val, "output_ntokens": output_ntokens, "total_ntokens": output_ntokens+input_ntokens}
                 decode_content = {"Call_id":call_id,"output":first_token}
-                log_action(request_timestamp,"LLM Call",call_content)
-                log_action(first_token_timestamp,"LLM Decode",decode_content)
-                log_action(return_timestamp,"LLM Return",return_content)
-                
-                return self.return_format.format(response=resp)
+                log_action(request_timestamp,index,"LLM Call",call_content)
+                log_action(first_token_timestamp,index,"LLM Decode",decode_content)
+                log_action(return_timestamp,index,"LLM Return",return_content) 
+                return output_val
             time.sleep(_ + 2)
         raise Exception("Failed.")
 
-def log_action(timestamp, action: str, content: dict):
-    with open("WS_logging.csv", "a", newline='') as log_file:
+def log_action(timestamp, index, action: str, content: dict):
+    with open("LTP_logging.csv", "a", newline='') as log_file:
         log_writer = csv.writer(log_file)
-        log_writer.writerow([timestamp, action, json.dumps(content)])
+        log_writer.writerow([timestamp, index, action, json.dumps(content)])

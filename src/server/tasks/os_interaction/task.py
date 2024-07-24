@@ -21,21 +21,19 @@ from src.typings import (
     SampleStatus,
 )
 
-def log_tool_call(call_id,params):
+def log_tool_call(index,call_id,params):
     timestamp = datetime.datetime.now().timestamp()
     log_entry = {"Call_id":call_id,"tool_name": 'OS', "tool_param": params}
-    with open("OS_logging.csv", "a", newline='') as log_file:
+    with open("OS_logging_test.csv", "a", newline='') as log_file:
         os_log_writer = csv.writer(log_file)
-        print("writing1")
-        os_log_writer.writerow([timestamp, "Tool Call", json.dumps(log_entry)])
+        os_log_writer.writerow([timestamp, index, "Tool Call", json.dumps(log_entry)])
 
-def log_tool_return(call_id,ret):
+def log_tool_return(index,call_id,ret):
     timestamp = datetime.datetime.now().timestamp()
     log_entry = {"Call_id":call_id, "tool_ret": ret}
-    with open("OS_logging.csv", "a", newline='') as log_file:
+    with open("OS_logging_test.csv", "a", newline='') as log_file:
         os_log_writer = csv.writer(log_file)
-        print("writing2")
-        os_log_writer.writerow([timestamp, "Tool Return", json.dumps(log_entry)])
+        os_log_writer.writerow([timestamp, index, "Tool Return", json.dumps(log_entry)])
 
 class Container:
     def __init__(self, image):
@@ -377,7 +375,7 @@ class OSInteraction(Task):
         print("init container ok")
         try:
             print("start judge")
-            result = await self._judge(session, config, container)
+            result = await self._judge(session, config, container,index)
             result.result["file"] = file
             result.result["index_in_file"] = index_in_file
             print("finish judge")
@@ -397,7 +395,7 @@ class OSInteraction(Task):
                 pass
 
     async def _judge(
-        self, session: Session, config: JudgeConfig, container: Container
+        self, session: Session, config: JudgeConfig, container: Container, index
     ) -> TaskSampleExecutionResult:
 
         print("exec start")
@@ -486,16 +484,15 @@ If the output is too long, I will truncate it. The truncated output is not compl
                 break
             elif action == "bash":
                 call_id = str(uuid.uuid4())
-                log_tool_call(call_id,content)
-                print("Tool call logged",call_id )
+                log_tool_call(index,call_id,content)
                 result = await asyncio.to_thread(container.execute, content)
                 result = result.output.decode("utf-8")
                 if len(result) > 800:
                     result = (
                         result[:780] + "\n[truncated because the output is too long]"
                     )
-                log_tool_return(call_id,result)
-                print("Tool return logged",call_id )
+                print("Logging Tool Return")
+                log_tool_return(index,call_id,result)
                 session.inject(
                     {
                         "role": "user",

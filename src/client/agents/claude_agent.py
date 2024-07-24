@@ -23,7 +23,7 @@ class Claude(AgentClient):
         if not self.api_args.get("stop_sequences"):
             self.api_args["stop_sequences"] = [anthropic.HUMAN_PROMPT]
 
-    def inference(self, history: List[dict]) -> str:
+    def inference(self, history: List[dict],index) -> str:
         prompt = ""
         for message in history:
             if message["role"] == "user":

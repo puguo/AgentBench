@@ -13,19 +13,19 @@ from copy import deepcopy
 import traceback
 
 
-def log_env_call(call_id,params):
+def log_env_call(index,call_id,params):
     timestamp = datetime.datetime.now().timestamp()
     log_entry = {"Call_id":call_id,"env_name": 'SingleAlfredTWEnv', "env_param": params}
     with open("HH_logging.csv", "a", newline='') as log_file:
         log_writer = csv.writer(log_file)
-        log_writer.writerow([timestamp, "Env Call", json.dumps(log_entry)])
+        log_writer.writerow([timestamp, index, "Env Call", json.dumps(log_entry)])
 
-def log_env_return(call_id, ret):
+def log_env_return(index,call_id, ret):
     timestamp = datetime.datetime.now().timestamp()
     log_entry = {"Call_id":call_id,"env_name": 'SingleAlfredTWEnv', "env_ret": ret}
     with open("HH_logging.csv", "a", newline='') as log_file:
         log_writer = csv.writer(log_file)
-        log_writer.writerow([timestamp, "Env Return", json.dumps(log_entry)])
+        log_writer.writerow([timestamp, index, "Env Return", json.dumps(log_entry)])
 
 class ALFWorld(Task):
 
@@ -129,7 +129,7 @@ class ALFWorld(Task):
         env = env.init_env(batch_size=1)
         try:
             print("running env")
-            result, log_info, finish_reason = await self.alfworld_run(session, env)
+            result, log_info, finish_reason = await self.alfworld_run(session, env, index)
         except Exception as e:
             print("error", e)
             traceback.print_exc()
@@ -168,7 +168,7 @@ class ALFWorld(Task):
         actions = "\n".join(actions)
         return " AVAILABLE ACTIONS: " + actions + "\n"
 
-    async def alfworld_run(self, session: Session, env: Any):
+    async def alfworld_run(self, session: Session, env: Any, index):
         finish_reason = SampleStatus.COMPLETED
         # env init
         ob, info = env.reset()
@@ -213,11 +213,11 @@ class ALFWorld(Task):
             session.history[-2].content = session.history[-2].content.split("AVAILABLE ACTIONS")[
                 0]  # reduce the prompt length
             call_id = str(uuid.uuid4())
-            log_env_call(call_id, [action])
+            log_env_call(index, call_id, [action])
             observation, reward, done, info = env.step([action])
             observation, reward, done = process_ob(observation[0]), info['won'][0], done[0]
             env_content = observation + self.get_available_actions(info.get('admissible_commands', [[]])[0])
-            log_env_return(call_id, {"role": "user", "content":env_content })
+            log_env_return(index, call_id, {"role": "user", "content":env_content })
             session.inject({"role": "user", "content":env_content })
 
             # save

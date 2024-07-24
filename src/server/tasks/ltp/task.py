@@ -524,6 +524,7 @@ class LateralThinkingPuzzle(Task):
                 host = (await asyncio.to_thread(
                     self.eval_agent.inference,
                     hosting,
+                    index
                 )).strip()
                 relevant = False
                 if prompter.check_yes(host):
@@ -536,6 +537,7 @@ class LateralThinkingPuzzle(Task):
                                 "content": prompter.hosting_summary(solver),
                             }
                         ],
+                        index
                     )).strip()
                     relevant = True
                 elif prompter.check_no(host):
@@ -563,6 +565,7 @@ class LateralThinkingPuzzle(Task):
                                     "content": prompter.hosting_simplify(reasoning),
                                 }
                             ],
+                            index
                         )).strip()
                     else:
                         merge = summary
@@ -585,6 +588,7 @@ class LateralThinkingPuzzle(Task):
                         compare = (await asyncio.to_thread(
                             self.eval_agent.inference,
                             comp_msg,
+                            index
                         )).strip()
                         if prompter.check_yes(compare):
                             bingo += 1

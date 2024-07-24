@@ -169,19 +169,19 @@ class KnowledgeGraph(Task):
         actions = []
         variables_list = []
         
-        def log_tool_call(call_id,name, params):
+        def log_tool_call(index,call_id,name,params):
             timestamp = datetime.datetime.now().timestamp()
             log_entry = {"Call_id":call_id,"tool_name": name, "tool_param": params}
             with open("KG_logging.csv", "a", newline='') as log_file:
                 log_writer = csv.writer(log_file)
-                log_writer.writerow([timestamp, "Tool Call", log_entry])
+                log_writer.writerow([timestamp, index, "Tool Call", log_entry])
 
-        def log_tool_return(call_id, ret):
+        def log_tool_return(index,call_id,ret):
             timestamp = datetime.datetime.now().timestamp()
             log_entry = {"Call_id":call_id,"tool_ret": ret}
             with open("KG_logging.csv", "a", newline='') as log_file:
                 log_writer = csv.writer(log_file)
-                log_writer.writerow([timestamp, "Tool Return", log_entry])
+                log_writer.writerow([timestamp, index, "Tool Return", log_entry])
         
         question = data_item["question"]
         entities = data_item["entities"]
@@ -247,9 +247,9 @@ class KnowledgeGraph(Task):
                                         arguments[i] = entities[argument]
                                 arguments.append(self.sparql_executor)  # add the sparql executor as the last argument
                                 call_id = str(uuid.uuid4())
-                                log_tool_call(call_id, function_name, arguments[:-1])
+                                log_tool_call(index, call_id, function_name, arguments[:-1])
                                 execution, execution_message = func(*arguments)
-                                log_tool_return(call_id, execution_message)
+                                log_tool_return(index, call_id, execution_message)
                                 actions.append(f"{function_name}({', '.join(ori_arguments)})")
                                 if "##" in execution_message:
                                     # the execution message contains a variable
@@ -266,7 +266,7 @@ class KnowledgeGraph(Task):
                                         execution_message = f"{function_name}({', '.join(ori_arguments)}) cannot be executed. The two variables are not of the same type. You may further explore them by call get_relations"
                                 except UnboundLocalError:
                                     execution_message = f"I may make a syntax error when calling {function_name} (e.g., unmatched parenthesis). I need to fix it and reuse the tool"
-                                log_tool_return(call_id,execution_message)
+                                log_tool_return(index, call_id,execution_message)
                                 continue
 
                         if not function_executed:

@@ -5,5 +5,5 @@ class AgentClient:
     def __init__(self, *args, **kwargs):
         pass
 
-    def inference(self, history: List[dict]) -> str:
+    def inference(self, history: List[dict],index) -> str:
         raise NotImplementedError()
