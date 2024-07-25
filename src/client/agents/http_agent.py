@@ -1,3 +1,4 @@
+import openai
 import contextlib
 import time
 import warnings
@@ -6,7 +7,6 @@ import datetime
 import os
 import requests
 from urllib3.exceptions import InsecureRequestWarning
-from openai import OpenAI
 
 from src.typings import *
 from src.utils import *
@@ -193,7 +193,7 @@ class HTTPAgent(AgentClient):
             try:
                 body = self.body.copy()
                 body.update(self._handle_history(history))
-                client = OpenAI(api_key='')
+                client =openai.OpenAI(api_key = self.headers['Authorization'].split(' ')[1])
                 request_timestamp = datetime.datetime.now().timestamp()
                 with no_ssl_verification():
                     resp = client.chat.completions.create(
@@ -233,7 +233,7 @@ class HTTPAgent(AgentClient):
                 decode_content = {"Call_id":call_id,"output":first_token}
                 log_action(request_timestamp,index,"LLM Call",call_content)
                 log_action(first_token_timestamp,index,"LLM Decode",decode_content)
-                log_action(return_timestamp,index,"LLM Return",return_content) 
+                log_action(return_timestamp,index,"LLM Return",return_content)
                 return output_val
             time.sleep(_ + 2)
         raise Exception("Failed.")

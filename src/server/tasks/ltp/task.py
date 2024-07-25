@@ -548,7 +548,8 @@ class LateralThinkingPuzzle(Task):
                                 "role": "user",
                                 "content": prompter.hosting_summary_opposite(solver),
                             }
-                        ]
+                        ],
+                        index
                     )).strip()
                     relevant = True
                 if relevant:
